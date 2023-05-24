@@ -1,0 +1,55 @@
+FROM --platform=linux/amd64 jrei/systemd-debian:10
+
+RUN apt-get update && apt-get install -y --no-install-recommends apt-utils
+RUN apt-get install -y mlocate wget curl gnupg net-tools sudo htop nano git
+
+RUN apt install -y curl wget gnupg2 ca-certificates lsb-release apt-transport-https dirmngr libpq-dev
+RUN wget https://packages.sury.org/php/apt.gpg
+RUN apt-key add apt.gpg
+RUN echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/php.list
+
+#Sql server
+RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+RUN curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/sources.list.d/mssql-release.list
+
+#Utilidades
+RUN apt update
+RUN apt-get install -y unzip zsh
+RUN wget https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true
+
+#Instalo php
+RUN apt-get update
+RUN apt-get install -y php8.1 php8.1-cli php8.1-fpm php8.1-common php8.1-gd php8.1-pgsql php8.1-imap php8.1-cgi php-pear php8.1-curl php8.1-intl php8.1-pspell php8.1-sqlite3 php8.1-tidy php8.1-xmlrpc php8.1-xdebug php8.1-xsl php8.1-zip php8.1-mbstring php8.1-redis php8.1-dev php8.1-xml -y --allow-unauthenticated
+
+RUN apt-get install -y unixodbc-dev
+RUN apt-get install -y libgssapi-krb5-2
+
+RUN ACCEPT_EULA=Y apt-get install -y msodbcsql17
+RUN ACCEPT_EULA=Y apt-get install -y mssql-tools
+RUN echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
+
+RUN pecl install sqlsrv
+RUN pecl install pdo_sqlsrv
+RUN printf "; priority=20\nextension=sqlsrv.so\n" > /etc/php/8.1/mods-available/sqlsrv.ini
+RUN printf "; priority=30\nextension=pdo_sqlsrv.so\n" > /etc/php/8.1/mods-available/pdo_sqlsrv.ini
+RUN phpenmod -v 8.1 sqlsrv pdo_sqlsrv
+
+#Select php8.1 version
+RUN update-alternatives --set php /usr/bin/php8.1
+RUN update-alternatives --set phar /usr/bin/phar8.1
+RUN update-alternatives --set phar.phar /usr/bin/phar.phar8.1
+RUN update-alternatives --set phpize /usr/bin/phpize8.1
+RUN update-alternatives --set php-config /usr/bin/php-config8.1
+
+RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+RUN php composer-setup.php --install-dir=bin --filename=composer
+
+COPY /dockerassets/www.conf /etc/php/8.1/fpm/pool.d/www.conf
+RUN mkdir /run/php
+
+# Bash
+COPY /dockerassets/default.bashrc /root/.bashrc
+COPY /dockerassets/default.zshrc /root/.zshrc
+
+# Expose octane
+EXPOSE 9000

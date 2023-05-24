@@ -1,0 +1,32 @@
+version: '3.2'
+services:
+  backserver:
+    build:
+      context: .
+      dockerfile: DockerfileBack
+    volumes:
+      - './www/back/:/www/back'
+      - './xdebugconfig/20-xdebug.ini:/etc/php/8.2/fpm/conf.d/20-xdebug.ini'
+    working_dir: /www/back
+    environment:
+      APP_KEY: 7c570677b6270289dc9a2c927e2eb292
+      DB_CONNECTION: mysql
+      DB_DATABASE_: 'nombreBaseDatos'
+      DB_USERNAME: 'root'
+      DB_PASSWORD: 'root'
+      DATABASE_URL_BE: 'mysql://root:root@mysql:3306/nombreBaseDatos'
+    command: php-fpm8.1 -R --nodaemonize
+    depends_on:
+      - pgsql
+  mariadb:
+    image: mariadb
+    container_name: vivood-mariadb
+    ports:
+      - '${PORT_MYSQL:-3306}:3306'
+    volumes:
+      - './var/mysql:/var/lib/mysql'
+    environment:
+      MYSQL_DATABASE: nombreBaseDatos
+      MYSQL_USER: 'root'
+      MYSQL_PASSWORD: 'root'
+      MYSQL_ROOT_PASSWORD: root
